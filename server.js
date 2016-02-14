@@ -1,5 +1,6 @@
 var express = require('express');
 var bodyParser = require('body-parser');
+var _ = require('underscore');
 
 var app = express();
 var PORT = process.env.PORT || 3000;
@@ -9,11 +10,20 @@ var todos = [];
 app.use(bodyParser.json());
 
 
-//Get /todos
+//Get /todos	
 //Get /todos/:id
 
 app.get('/todos', function (req, res) {
-	res.json(todos);
+	var queryParams = req.query;
+	var filteredTodos = todos;
+
+	if (queryParams.hasOwnProperty('complete') && queryParams.complete === 'true') {
+		filteredTodos = _where(filteredTodos, {complete: true});
+	}else if (queryParams.hasOwnProperty('complete') && queryParams.complete === 'false') {
+		filteredTodos = _where(filteredTodos, {complete:true});
+	}	
+	res.json(filteredTodos);
+
 
 });
 
@@ -27,17 +37,8 @@ app.get('/', function (req,res) {
 
 app.get('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	var matchedTodo;
-
-	// res.send('Asking for todo with id of ' + req.params.id);
-
-	todos.forEach(function (todo) {
-		if (todoId === todo.id) {
-			matchedTodo = todo; 
-		}
-
-	});
-
+	var matchedTodo = _.findWhere(todos, {id: todoId});
+	
 	if (matchedTodo) {
 		res.json(matchedTodo);
 	} else {
@@ -51,8 +52,16 @@ app.get('/todos/:id', function(req, res) {
 app.post('/todos', function (req, res) {
 	var body = req.body;
 
+	body = _.pick(body, 'description', 'complete')
+
+	if (!_.isBoolean(body.complete) || !_.isString(body.description) || body.description.trim() === "") {
+		return res.status(400).send()
+	}
+
+	body.description = body.description.trim();
+
 	body["id"] = todoNextId++;
-	
+
 	todos.push(body);
 
 	console.log('description: ' + body.description);
